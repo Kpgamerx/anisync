@@ -1,0 +1,98 @@
+// AniSync — Prisma schema
+// Neon Postgres via pooled connection; directUrl for migrations.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                    String    @id @default(cuid())
+  discordId             String    @unique
+  discordUsername       String?
+  discordAvatar         String?
+  anilistId             Int?      @unique
+  anilistUsername       String?
+  anilistAvatar         String?
+  encryptedAccessToken  String? // AES-256-GCM encrypted
+  encryptedRefreshToken String? // AES-256-GCM encrypted
+  tokenExpiresAt        DateTime?
+  titleLanguage         String    @default("ROMAJI") // ROMAJI | ENGLISH | NATIVE
+  timezone              String    @default("UTC")
+  preferDub             Boolean   @default(false)
+  scoreFormat           String    @default("POINT_10") // AniList score format
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  serverMembers    ServerMember[]
+  notificationSubs NotificationSub[]
+
+  @@index([discordId])
+  @@index([anilistId])
+  @@map("users")
+}
+
+model Server {
+  id                    String   @id @default(cuid())
+  discordGuildId        String   @unique
+  guildName             String?
+  guildIcon             String?
+  notificationChannelId String?
+  pingRoleId            String?
+  timezone              String   @default("UTC")
+  titleLanguage         String   @default("ROMAJI")
+  preferDub             Boolean  @default(false)
+  airingAlertsEnabled   Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  members          ServerMember[]
+  notificationSubs NotificationSub[]
+
+  @@index([discordGuildId])
+  @@map("servers")
+}
+
+model ServerMember {
+  id       String @id @default(cuid())
+  userId   String
+  serverId String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  server   Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, serverId])
+  @@map("server_members")
+}
+
+model NotificationSub {
+  id         String   @id @default(cuid())
+  userId     String
+  serverId   String
+  mediaId    Int
+  mediaTitle String
+  notifyAt   String   @default("AIRING") // AIRING | DAY_BEFORE | WEEK_BEFORE
+  createdAt  DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, serverId, mediaId])
+  @@index([mediaId])
+  @@map("notification_subs")
+}
+
+model FiredNotification {
+  id            String   @id @default(cuid())
+  airingId      Int
+  discordUserId String
+  firedAt       DateTime @default(now())
+
+  @@unique([airingId, discordUserId])
+  @@index([firedAt])
+  @@map("fired_notifications")
+}
