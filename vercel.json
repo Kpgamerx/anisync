@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/check-airing",
+      "schedule": "*/5 * * * *"
+    }
+  ],
+  "functions": {
+    "app/api/discord/interactions/route.ts": {
+      "runtime": "edge"
+    },
+    "app/api/cron/check-airing/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}
